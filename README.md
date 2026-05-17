@@ -7,6 +7,9 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![PyTorch 2.x](https://img.shields.io/badge/PyTorch-2.x-red.svg)](https://pytorch.org/)
 [![CUDA](https://img.shields.io/badge/CUDA-A100-green.svg)](https://developer.nvidia.com/cuda-zone)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akashnathai/hybrid_aqi_xai/blob/main/notebooks/AQI_Industry_indian.ipynb)
+[![Project Website](https://img.shields.io/badge/Project-Website-black.svg)](https://akashnathai.github.io/hybrid_aqi_xai/)
+[![Citation](https://img.shields.io/badge/Citation-BibTeX-purple.svg)](https://akashnathai.github.io/hybrid_aqi_xai/#citation)
 [![Status](https://img.shields.io/badge/status-research-orange.svg)]()
 
 ---
