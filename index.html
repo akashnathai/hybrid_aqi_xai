@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hybrid AQI XAI — CNN-BiLSTM with SHAP Temporal Attribution</title>
+<meta name="description" content="Explainable CNN-BiLSTM deep learning architecture for forecasting industrial atmospheric pollutants in Indian metropolitan cities. Joint seasonal × diurnal SHAP decomposition for policy-grade insights." />
+<meta name="author" content="Akash Nath, Pragyat Jyoti Baruah, Arnab Paul, Arun Jyoti Nath, Tirthanka Borah, Kamalesh Debnath" />
+<meta name="keywords" content="AQI forecasting, CNN-BiLSTM, SHAP, Explainable AI, PM2.5, PM10, Delhi air quality, CPCB, deep learning, time series" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Hybrid AQI XAI — CNN-BiLSTM with SHAP Temporal Attribution" />
+<meta property="og:description" content="An explainable deep-learning framework for forecasting industrial atmospheric pollutants across Indian metropolitan cities." />
+<meta property="og:url" content="https://akashnathai.github.io/hybrid_aqi_xai/" />
+
+<!-- Favicon (simple inline SVG) -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌫️</text></svg>" />
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  /* =========================================================
+     RESET & TOKENS
+     ========================================================= */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  :root {
+    --bg: #0a0c10;
+    --bg-soft: #11141a;
+    --surface: #161a21;
+    --surface-2: #1d2129;
+    --border: #262b35;
+    --text: #e7e9ec;
+    --text-muted: #8b919c;
+    --text-dim: #5d626c;
+    --accent: #5eead4;
+    --accent-hover: #2dd4bf;
+    --accent-soft: rgba(94, 234, 212, 0.08);
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --green: #4ade80;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    --maxw: 1180px;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Background subtle grid pattern */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(94, 234, 212, 0.06), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(167, 139, 250, 0.05), transparent 40%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
+  a:hover { color: var(--accent-hover); }
+
+  code, pre { font-family: var(--font-mono); }
+
+  /* =========================================================
+     LAYOUT UTILITIES
+     ========================================================= */
+  .container {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  section {
+    padding: 96px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  section:last-of-type { border-bottom: none; }
+
+  .eyebrow {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+    padding: 6px 12px;
+    background: var(--accent-soft);
+    border-radius: 100px;
+    border: 1px solid rgba(94, 234, 212, 0.2);
+  }
+
+  h1, h2, h3, h4 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+  h2 { font-size: clamp(1.7rem, 3.5vw, 2.5rem); margin-bottom: 16px; }
+  h3 { font-size: 1.25rem; margin-bottom: 12px; }
+
+  p { color: var(--text-muted); }
+  .lead { font-size: 1.125rem; color: var(--text); max-width: 720px; }
+
+  /* =========================================================
+     NAVIGATION
+     ========================================================= */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10, 12, 16, 0.7);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    max-width: var(--maxw);
+    margin: 0 auto;
+  }
+  .nav-brand {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .nav-brand .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .nav-links { display: flex; gap: 24px; }
+  .nav-links a {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta {
+    padding: 8px 16px;
+    background: var(--accent);
+    color: #062e2a;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .nav-cta:hover { background: var(--accent-hover); color: #062e2a; }
+
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+  }
+
+  /* =========================================================
+     HERO
+     ========================================================= */
+  .hero {
+    padding: 96px 0 64px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 48px;
+    align-items: center;
+  }
+  @media (min-width: 960px) {
+    .hero-grid { grid-template-columns: 1.2fr 1fr; }
+  }
+  .hero h1 {
+    background: linear-gradient(180deg, #fff 0%, #a8b0bc 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 24px;
+  }
+  .hero .lead { margin-bottom: 32px; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 32px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: border 0.2s, transform 0.2s;
+  }
+  .stat:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+  .stat-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+
+  /* CTA buttons */
+  .cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 20px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #062e2a;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { background: var(--accent-hover); color: #062e2a; transform: translateY(-2px); }
+  .btn:hover { border-color: var(--text-muted); color: var(--text); }
+  .btn svg { width: 16px; height: 16px; }
+
+  /* =========================================================
+     CARDS
+     ========================================================= */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 720px) {
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 720px) {
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* =========================================================
+     ARCHITECTURE DIAGRAM
+     ========================================================= */
+  .arch-flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 0;
+  }
+  .arch-node {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 24px;
+    text-align: center;
+    width: 100%;
+    max-width: 480px;
+    transition: border 0.2s;
+    position: relative;
+  }
+  .arch-node:hover { border-color: var(--accent); }
+  .arch-node-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .arch-node-name {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 15px;
+  }
+  .arch-node-detail {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    margin-top: 4px;
+  }
+  .arch-node-input { border-left: 3px solid var(--purple); }
+  .arch-node-cnn   { border-left: 3px solid var(--orange); }
+  .arch-node-rnn   { border-left: 3px solid var(--accent); }
+  .arch-node-fc    { border-left: 3px solid var(--yellow); }
+  .arch-node-out   { border-left: 3px solid var(--green); }
+  .arch-node-shap  { border-left: 3px solid var(--red); }
+
+  .arch-arrow {
+    width: 2px;
+    height: 24px;
+    background: linear-gradient(180deg, var(--border), var(--accent));
+    position: relative;
+  }
+  .arch-arrow::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--accent);
+  }
+
+  /* =========================================================
+     TABLES
+     ========================================================= */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  thead {
+    background: var(--surface-2);
+  }
+  th, td {
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  td { color: var(--text); }
+  td.num { font-family: var(--font-mono); }
+  tr.best td {
+    background: rgba(94, 234, 212, 0.04);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  tbody tr:hover { background: var(--surface-2); }
+
+  /* =========================================================
+     CHART CONTAINERS
+     ========================================================= */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .chart-card h3 { margin-bottom: 6px; }
+  .chart-card p { font-size: 14px; margin-bottom: 20px; }
+  .chart-box {
+    position: relative;
+    height: 320px;
+  }
+
+  /* =========================================================
+     FINDINGS LIST
+     ========================================================= */
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .finding-tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .finding h4 { font-size: 1.05rem; color: var(--text); }
+
+  /* =========================================================
+     AUTHORS
+     ========================================================= */
+  .authors-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 640px) { .authors-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 960px) { .authors-grid { grid-template-columns: 1fr 1fr 1fr; } }
+
+  .author-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: border 0.2s;
+  }
+  .author-card:hover { border-color: var(--accent); }
+  .author-name {
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .author-name.lead-author::after {
+    content: "Lead";
+    margin-left: 8px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    vertical-align: middle;
+  }
+  .author-affil {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .author-email {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    word-break: break-all;
+  }
+
+  /* =========================================================
+     CITATION
+     ========================================================= */
+  .citation-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+  }
+  .citation-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .copy-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .copy-btn.copied { color: var(--green); border-color: var(--green); }
+  pre.citation {
+    padding: 20px;
+    font-size: 13px;
+    color: var(--text);
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+
+  /* =========================================================
+     FOOTER
+     ========================================================= */
+  footer {
+    padding: 64px 0 32px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-soft);
+  }
+  .footer-inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+  }
+  @media (min-width: 720px) {
+    .footer-inner { grid-template-columns: 1.5fr 1fr; }
+  }
+  .footer-author {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .footer-author-meta {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .footer-author h3 { margin-bottom: 8px; }
+  .footer-author p { font-size: 14px; margin-bottom: 20px; }
+  .profile-links { display: flex; flex-wrap: wrap; gap: 8px; }
+  .profile-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-size: 13px;
+    color: var(--text);
+    transition: all 0.2s;
+  }
+  .profile-link:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .profile-link svg { width: 14px; height: 14px; }
+  .footer-bottom {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-dim);
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* =========================================================
+     SCROLL REVEAL
+     ========================================================= */
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== NAVIGATION ==================== -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-brand">
+      <span class="dot"></span>
+      <span>hybrid_aqi_xai</span>
+    </a>
+    <div class="nav-links">
+      <a href="#overview">Overview</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#results">Results</a>
+      <a href="#shap">SHAP</a>
+      <a href="#authors">Authors</a>
+    </div>
+    <a href="https://github.com/akashnathai/hybrid_aqi_xai" class="nav-cta" target="_blank" rel="noopener">
+      View on GitHub →
+    </a>
+  </div>
+</nav>
+
+<!-- ==================== HERO ==================== -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow">IEEE Conference Submission · 2026</span>
+        <h1>An Explainable CNN-BiLSTM for Forecasting Industrial Air Pollution in Indian Metros.</h1>
+        <p class="lead">
+          A hybrid deep-learning framework that pairs 1D convolutional feature
+          extraction with bidirectional recurrent sequence modeling, and
+          decomposes SHAP attributions jointly across seasonal and diurnal
+          axes &mdash; turning a black-box AQI forecaster into a policy-grade
+          tool. Evaluated on six years of CPCB hourly data across Delhi,
+          Mumbai, Kolkata, and Chennai.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/akashnathai/hybrid_aqi_xai" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.92.58.1.79-.25.79-.56v-2.16c-3.2.7-3.87-1.36-3.87-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.69 1.25 3.34.95.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.18a10.97 10.97 0 0 1 5.74 0c2.19-1.49 3.15-1.18 3.15-1.18.62 1.58.23 2.75.11 3.04.73.8 1.18 1.83 1.18 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.66.79.55C20.21 21.38 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+            View Code
+          </a>
+          <a class="btn" href="#citation">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6M9 16h6M9 8h6M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>
+            Cite Paper
+          </a>
+          <a class="btn" href="#" id="openColab">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+            Open in Colab
+          </a>
+        </div>
+      </div>
+      <div>
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-value">0.9874</div>
+            <div class="stat-label">R² on Delhi</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">13.83</div>
+            <div class="stat-label">RMSE</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">23.2%</div>
+            <div class="stat-label">RMSE↓ from CNN block</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">08:00</div>
+            <div class="stat-label">Peak attribution (IST)</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">4</div>
+            <div class="stat-label">Indian metros evaluated</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">6</div>
+            <div class="stat-label">Pollutants modeled</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== OVERVIEW ==================== -->
+<section id="overview">
+  <div class="container">
+    <span class="eyebrow">Overview</span>
+    <h2>What this paper does, in a paragraph.</h2>
+    <p class="lead" style="margin-bottom: 40px;">
+      Industrial air pollution in Indian metropolitan areas remains a serious public
+      health problem, and AQI readings cross hazardous levels in cities like Delhi
+      almost every winter. For policy interventions and citizen advisories to actually
+      work, the underlying forecasts have to be both accurate <em>and</em> interpretable.
+      This paper proposes a CNN-BiLSTM model paired with SHAP GradientExplainer, and
+      decomposes the explainability output across season and hour-of-day to surface
+      actionable intervention windows.
+    </p>
+
+    <div class="grid-3">
+      <div class="card reveal">
+        <h3 style="color: var(--accent);">Hybrid Architecture</h3>
+        <p>1D convolution extracts local temporal motifs; stacked bidirectional LSTM
+           models forward accumulation and backward dissipation. Closed by a small
+           FC head.</p>
+      </div>
+      <div class="card reveal">
+        <h3 style="color: var(--purple);">Explainability</h3>
+        <p>SHAP GradientExplainer gives per-timestep, per-feature attribution.
+           Aggregated globally, then stratified seasonally and diurnally.</p>
+      </div>
+      <div class="card reveal">
+        <h3 style="color: var(--orange);">Multi-City Honesty</h3>
+        <p>Strong on Delhi and Mumbai; clearly weaker on Chennai because the
+           current six-feature input cannot capture sea-breeze meteorology.
+           We say so explicitly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== ARCHITECTURE ==================== -->
+<section id="architecture">
+  <div class="container">
+    <span class="eyebrow">Architecture</span>
+    <h2>CNN-BiLSTM with post-hoc SHAP attribution.</h2>
+    <p class="lead">Three sequential stages, then a separate explainability pass.</p>
+
+    <div class="arch-flow">
+      <div class="arch-node arch-node-input reveal">
+        <div class="arch-node-label">Input</div>
+        <div class="arch-node-name">24-hour Multi-Pollutant Window</div>
+        <div class="arch-node-detail">PM₂.₅, PM₁₀, NO₂, CO, SO₂, O₃ &nbsp;·&nbsp; shape (B, 24, 6)</div>
+      </div>
+      <div class="arch-arrow"></div>
+
+      <div class="arch-node arch-node-cnn reveal">
+        <div class="arch-node-label">Stage 1 · CNN</div>
+        <div class="arch-node-name">1D Conv + BatchNorm + ReLU + MaxPool</div>
+        <div class="arch-node-detail">64 filters &nbsp;·&nbsp; kernel=3 &nbsp;·&nbsp; dropout=0.2</div>
+      </div>
+      <div class="arch-arrow"></div>
+
+      <div class="arch-node arch-node-rnn reveal">
+        <div class="arch-node-label">Stage 2 · BiLSTM</div>
+        <div class="arch-node-name">Stacked Bidirectional LSTM</div>
+        <div class="arch-node-detail">128 → 64 hidden units per direction</div>
+      </div>
+      <div class="arch-arrow"></div>
+
+      <div class="arch-node arch-node-fc reveal">
+        <div class="arch-node-label">Stage 3 · Head</div>
+        <div class="arch-node-name">Fully Connected Prediction Head</div>
+        <div class="arch-node-detail">128 → 64 → 1 &nbsp;·&nbsp; dropout=0.3</div>
+      </div>
+      <div class="arch-arrow"></div>
+
+      <div class="arch-node arch-node-out reveal">
+        <div class="arch-node-label">Output</div>
+        <div class="arch-node-name">Scalar AQI ŷ</div>
+        <div class="arch-node-detail">Inverse min-max scaled to AQI range</div>
+      </div>
+      <div class="arch-arrow"></div>
+
+      <div class="arch-node arch-node-shap reveal">
+        <div class="arch-node-label">Post-hoc</div>
+        <div class="arch-node-name">SHAP GradientExplainer</div>
+        <div class="arch-node-detail">φᵢ,ₜ &nbsp;·&nbsp; per-feature, per-timestep attribution</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== RESULTS ==================== -->
+<section id="results">
+  <div class="container">
+    <span class="eyebrow">Results</span>
+    <h2>CNN-BiLSTM beats six baselines on the Delhi test set.</h2>
+    <p class="lead" style="margin-bottom: 40px;">
+      We compare against ARIMA, SVR, Random Forest, LSTM, GRU, and CNN-LSTM.
+      All metrics on the inverse-scaled AQI; deep models share a 15%
+      chronological test split.
+    </p>
+
+    <div class="chart-card reveal" style="margin-bottom: 32px;">
+      <h3>RMSE comparison (lower is better)</h3>
+      <p>Walk-forward ARIMA shown for completeness; not directly comparable to chronological deep-learning evaluation.</p>
+      <div class="chart-box"><canvas id="chartBaselines"></canvas></div>
+    </div>
+
+    <div class="table-wrap reveal">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>MAE</th><th>RMSE</th><th>MAPE (%)</th><th>R²</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ARIMA (2,1,2)<sup>†</sup></td><td class="num">2.27</td><td class="num">7.25</td><td class="num">2.08</td><td class="num">0.9336</td></tr>
+          <tr><td>SVR (RBF)</td><td class="num">13.71</td><td class="num">18.72</td><td class="num">7.80</td><td class="num">0.9770</td></tr>
+          <tr><td>Random Forest</td><td class="num">13.74</td><td class="num">17.80</td><td class="num">9.52</td><td class="num">0.9792</td></tr>
+          <tr><td>LSTM</td><td class="num">14.41</td><td class="num">18.27</td><td class="num">9.29</td><td class="num">0.9780</td></tr>
+          <tr><td>GRU</td><td class="num">14.72</td><td class="num">18.53</td><td class="num">9.28</td><td class="num">0.9774</td></tr>
+          <tr><td>CNN-LSTM</td><td class="num">10.89</td><td class="num">14.19</td><td class="num">6.71</td><td class="num">0.9868</td></tr>
+          <tr class="best"><td><strong>CNN-BiLSTM (Ours)</strong></td><td class="num">9.74</td><td class="num">13.83</td><td class="num">5.99</td><td class="num">0.9874</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12px; margin-top:8px; color:var(--text-dim);">
+      <sup>†</sup> ARIMA evaluated via walk-forward one-step-ahead validation on a 30-day subset, feeding the most recent observed value before each prediction.
+    </p>
+  </div>
+</section>
+
+<!-- ==================== MULTI CITY ==================== -->
+<section id="multicity">
+  <div class="container">
+    <span class="eyebrow">Multi-City Generalization</span>
+    <h2>Strong on Delhi and Mumbai. Weaker on Chennai &mdash; and we say why.</h2>
+    <p class="lead" style="margin-bottom: 40px;">
+      Chennai's R² of 0.68 is not a failure to hide. The current six-feature input
+      doesn't capture sea-breeze meteorology, which is exactly what coastal
+      Tamil Nadu air quality depends on. Adding wind direction and a sea-breeze
+      index is a natural next step.
+    </p>
+
+    <div class="grid-2">
+      <div class="chart-card reveal">
+        <h3>R² across cities</h3>
+        <p>Climate diversity sharpens the model's limits.</p>
+        <div class="chart-box"><canvas id="chartCityR2"></canvas></div>
+      </div>
+      <div class="chart-card reveal">
+        <h3>RMSE across cities</h3>
+        <p>Mumbai's low absolute error reflects its lower AQI variance.</p>
+        <div class="chart-box"><canvas id="chartCityRMSE"></canvas></div>
+      </div>
+    </div>
+
+    <div class="table-wrap reveal" style="margin-top: 32px;">
+      <table>
+        <thead><tr><th>City</th><th>MAE</th><th>RMSE</th><th>MAPE (%)</th><th>R²</th></tr></thead>
+        <tbody>
+          <tr><td>Delhi</td><td class="num">9.74</td><td class="num">13.83</td><td class="num">5.99</td><td class="num">0.9874</td></tr>
+          <tr><td>Mumbai</td><td class="num">5.13</td><td class="num">6.28</td><td class="num">7.89</td><td class="num">0.9388</td></tr>
+          <tr><td>Kolkata</td><td class="num">8.87</td><td class="num">10.86</td><td class="num">16.40</td><td class="num">0.8993</td></tr>
+          <tr><td>Chennai</td><td class="num">15.47</td><td class="num">21.69</td><td class="num">18.91</td><td class="num">0.6808</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== SHAP ==================== -->
+<section id="shap">
+  <div class="container">
+    <span class="eyebrow">SHAP Explainability</span>
+    <h2>Why explainability is the actual contribution.</h2>
+    <p class="lead" style="margin-bottom: 40px;">
+      A high-R² forecaster is not the new thing. The new thing is decomposing
+      SHAP attributions jointly across season <em>and</em> hour-of-day, so a
+      policymaker can read off when each pollutant matters most. Three findings
+      stand out.
+    </p>
+
+    <div class="grid-3" style="margin-bottom: 40px;">
+      <div class="finding reveal">
+        <span class="finding-tag">Global</span>
+        <h4>PM₂.₅ dominates</h4>
+        <p>φ̄ = 0.0033 globally, followed by PM₁₀ at 0.0025. Consistent with PM₂.₅'s heavy weight in the CPCB sub-index formula.</p>
+      </div>
+      <div class="finding reveal">
+        <span class="finding-tag">Seasonal</span>
+        <h4>PM₁₀ overtakes during monsoon</h4>
+        <p>Rainfall preferentially scavenges fine PM₂.₅, leaving the coarse fraction dominant. Counterintuitive at first glance, clean once you know the chemistry.</p>
+      </div>
+      <div class="finding reveal">
+        <span class="finding-tag">Diurnal</span>
+        <h4>08:00 IST is the intervention window</h4>
+        <p>Both PMs peak sharply at 08:00 IST, exactly when morning traffic is at its worst. NO₂ and O₃ peak between 10:00–14:00 in the photochemical cycle.</p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="chart-card reveal">
+        <h3>Global feature importance</h3>
+        <p>Mean |φ| aggregated over the Delhi test set.</p>
+        <div class="chart-box"><canvas id="chartSHAPGlobal"></canvas></div>
+      </div>
+      <div class="chart-card reveal">
+        <h3>Seasonal attribution shift</h3>
+        <p>Notice the PM₂.₅ → PM₁₀ inversion during monsoon.</p>
+        <div class="chart-box"><canvas id="chartSHAPSeasonal"></canvas></div>
+      </div>
+    </div>
+
+    <div class="chart-card reveal" style="margin-top: 32px;">
+      <h3>Diurnal attribution by pollutant</h3>
+      <p>Hour-of-day SHAP attribution. Shaded morning rush window highlighted in the paper.</p>
+      <div class="chart-box" style="height: 360px;"><canvas id="chartSHAPDiurnal"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== ABLATION ==================== -->
+<section id="ablation">
+  <div class="container">
+    <span class="eyebrow">Ablation Study</span>
+    <h2>What each component is actually doing.</h2>
+    <p class="lead" style="margin-bottom: 40px;">
+      Component-level ablation on the Delhi test set. Removing the CNN block
+      hurts the most &mdash; confirming that local convolutional feature
+      extraction is doing the heavy lifting, not the recurrence alone.
+    </p>
+
+    <div class="grid-2">
+      <div class="chart-card reveal">
+        <h3>ΔRMSE when component removed</h3>
+        <p>Higher bar = component matters more.</p>
+        <div class="chart-box"><canvas id="chartAblation"></canvas></div>
+      </div>
+      <div class="table-wrap reveal" style="align-self: start;">
+        <table>
+          <thead><tr><th>Configuration</th><th>MAE</th><th>RMSE</th><th>R²</th><th>ΔRMSE</th></tr></thead>
+          <tbody>
+            <tr class="best"><td>CNN-BiLSTM (Full)</td><td class="num">9.74</td><td class="num">13.83</td><td class="num">0.9874</td><td class="num">—</td></tr>
+            <tr><td>w/o Bidirection</td><td class="num">10.85</td><td class="num">14.00</td><td class="num">0.9871</td><td class="num">+0.17</td></tr>
+            <tr><td>w/o BatchNorm</td><td class="num">12.38</td><td class="num">16.22</td><td class="num">0.9827</td><td class="num">+2.39</td></tr>
+            <tr><td>w/o CNN</td><td class="num">13.85</td><td class="num">18.01</td><td class="num">0.9787</td><td class="num">+4.18</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== AUTHORS ==================== -->
+<section id="authors">
+  <div class="container">
+    <span class="eyebrow">Authors</span>
+    <h2>Built collaboratively by researchers from Assam University and NIT Silchar.</h2>
+    <p class="lead" style="margin-bottom: 40px;">
+      Cross-disciplinary team spanning computer science, ecology and environmental
+      science, and management studies.
+    </p>
+
+    <div class="authors-grid">
+      <div class="author-card reveal">
+        <div class="author-name lead-author">Akash Nath</div>
+        <div class="author-affil">Dept. of Computer Science &amp; Engineering<br/>Assam University, Silchar, India</div>
+        <a class="author-email" href="mailto:akashnath.aus@gmail.com">akashnath.aus@gmail.com</a>
+      </div>
+      <div class="author-card reveal">
+        <div class="author-name">Pragyat Jyoti Baruah</div>
+        <div class="author-affil">Dept. of Computer Science &amp; Engineering<br/>Assam University, Silchar, India</div>
+        <a class="author-email" href="mailto:pragyat.jyoti.baruah@aus.ac.in">pragyat.jyoti.baruah@aus.ac.in</a>
+      </div>
+      <div class="author-card reveal">
+        <div class="author-name">Arnab Paul</div>
+        <div class="author-affil">Dept. of Computer Science &amp; Engineering<br/>Assam University, Silchar, India</div>
+        <a class="author-email" href="mailto:arnab.paul@aus.ac.in">arnab.paul@aus.ac.in</a>
+      </div>
+      <div class="author-card reveal">
+        <div class="author-name">Arun Jyoti Nath</div>
+        <div class="author-affil">Ecology and Environmental Science<br/>Assam University, Silchar, India</div>
+        <a class="author-email" href="mailto:arun.jyoti.nath@aus.ac.in">arun.jyoti.nath@aus.ac.in</a>
+      </div>
+      <div class="author-card reveal">
+        <div class="author-name">Tirthanka Borah</div>
+        <div class="author-affil">Dept. of Computer Science &amp; Engineering<br/>Assam University, Silchar, India</div>
+        <a class="author-email" href="mailto:tirthanka.borah@aus.ac.in">tirthanka.borah@aus.ac.in</a>
+      </div>
+      <div class="author-card reveal">
+        <div class="author-name">Kamalesh Debnath</div>
+        <div class="author-affil">Department of Management Studies<br/>NIT Silchar, Assam, India</div>
+        <a class="author-email" href="mailto:kamaleshdebnath2002@gmail.com">kamaleshdebnath2002@gmail.com</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CITATION ==================== -->
+<section id="citation">
+  <div class="container">
+    <span class="eyebrow">Citation</span>
+    <h2>If you build on this work, please cite us.</h2>
+    <p class="lead" style="margin-bottom: 32px;">BibTeX entry below. Click to copy.</p>
+
+    <div class="citation-wrap reveal">
+      <div class="citation-header">
+        <span>nath2026aqi.bib</span>
+        <button class="copy-btn" id="copyBtn">Copy</button>
+      </div>
+<pre class="citation" id="citationText">@inproceedings{nath2026aqi,
+  title     = {An Explainable Deep Learning Architecture for Forecasting
+               Industrial Atmospheric Pollutants of Indian Metropolitan Cities},
+  author    = {Nath, Akash and Baruah, Pragyat Jyoti and Paul, Arnab and
+               Nath, Arun Jyoti and Borah, Tirthanka and Debnath, Kamalesh},
+  booktitle = {Proceedings},
+  year      = {2026}
+}</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-author">
+        <div class="footer-author-meta">Lead author</div>
+        <h3>Akash Nath</h3>
+        <p>AI Engineer &amp; Researcher · Silchar, Assam, India.<br/>
+           Published at WSDM 2025 &amp; JATIT 2026 · CodeChef 4★ · Open to research collaborations.</p>
+        <div class="profile-links">
+          <a class="profile-link" href="https://akashnath.in" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+            akashnath.in
+          </a>
+          <a class="profile-link" href="https://github.com/akash-nathai" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.92.58.1.79-.25.79-.56v-2.16c-3.2.7-3.87-1.36-3.87-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.69 1.25 3.34.95.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.18a10.97 10.97 0 015.74 0c2.19-1.49 3.15-1.18 3.15-1.18.62 1.58.23 2.75.11 3.04.73.8 1.18 1.83 1.18 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.66.79.55C20.21 21.38 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+            GitHub
+          </a>
+          <a class="profile-link" href="https://www.linkedin.com/in/akashnathai/" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.95v5.66H9.36V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 110-4.12 2.06 2.06 0 010 4.12zm-1.78 13.02h3.55V9H3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>
+            LinkedIn
+          </a>
+          <a class="profile-link" href="https://www.researchgate.net/profile/Akash-Nath-4" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 4H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2z"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+            ResearchGate
+          </a>
+          <a class="profile-link" href="https://orcid.org/0009-0005-9602-7690" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zM7.37 17.5H5.62V8.5h1.75v9zm-.87-10.2a1.01 1.01 0 110-2.02 1.01 1.01 0 010 2.02zM18.4 17.5h-1.75v-4.41c0-1.94-.74-3.01-2.27-3.01-1.66 0-2.53 1.12-2.53 3.01v4.4H10.1V8.5h1.69v1.27h.03c.24-.45 1.27-1.43 2.93-1.43 2.07 0 3.66 1.16 3.66 4.18v4.98z"/></svg>
+            ORCID
+          </a>
+          <a class="profile-link" href="mailto:akashnath.aus@gmail.com">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Email
+          </a>
+        </div>
+      </div>
+
+      <div>
+        <div class="footer-author-meta">Repository</div>
+        <h3 style="font-size: 1.1rem; margin-bottom: 8px;">hybrid_aqi_xai</h3>
+        <p style="font-size: 14px; margin-bottom: 16px;">
+          Open-source code, Colab notebook, and reproduction scripts for
+          the full paper.
+        </p>
+        <a class="btn btn-primary" href="https://github.com/akashnathai/hybrid_aqi_xai" target="_blank" rel="noopener" style="font-size: 13px; padding: 9px 16px;">
+          Open repository →
+        </a>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      © 2026 Akash Nath et al. · MIT License · Built with ♥ in Silchar, Assam, India.
+    </div>
+  </div>
+</footer>
+
+<script>
+  /* ==========================================================
+     CHART.JS GLOBAL DEFAULTS
+     ========================================================== */
+  Chart.defaults.color = '#8b919c';
+  Chart.defaults.borderColor = '#262b35';
+  Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+  const ACCENT = '#5eead4';
+  const PURPLE = '#a78bfa';
+  const ORANGE = '#fb923c';
+  const YELLOW = '#fbbf24';
+  const RED = '#f87171';
+  const GREEN = '#4ade80';
+  const BLUE = '#60a5fa';
+
+  /* ==========================================================
+     BASELINES BAR CHART (RMSE)
+     ========================================================== */
+  new Chart(document.getElementById('chartBaselines'), {
+    type: 'bar',
+    data: {
+      labels: ['ARIMA†', 'SVR (RBF)', 'Random Forest', 'LSTM', 'GRU', 'CNN-LSTM', 'CNN-BiLSTM'],
+      datasets: [{
+        label: 'RMSE',
+        data: [7.25, 18.72, 17.80, 18.27, 18.53, 14.19, 13.83],
+        backgroundColor: ['#5d626c', '#5d626c', '#5d626c', '#5d626c', '#5d626c', '#5d626c', ACCENT],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { grid: { color: '#1d2129' }, ticks: { color: '#8b919c' } },
+        x: { grid: { display: false }, ticks: { color: '#8b919c' } }
+      }
+    }
+  });
+
+  /* ==========================================================
+     CITY R² CHART
+     ========================================================== */
+  new Chart(document.getElementById('chartCityR2'), {
+    type: 'bar',
+    data: {
+      labels: ['Delhi', 'Mumbai', 'Kolkata', 'Chennai'],
+      datasets: [{
+        label: 'R²',
+        data: [0.9874, 0.9388, 0.8993, 0.6808],
+        backgroundColor: [ACCENT, ACCENT, YELLOW, RED],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, max: 1, grid: { color: '#1d2129' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  /* ==========================================================
+     CITY RMSE CHART
+     ========================================================== */
+  new Chart(document.getElementById('chartCityRMSE'), {
+    type: 'bar',
+    data: {
+      labels: ['Delhi', 'Mumbai', 'Kolkata', 'Chennai'],
+      datasets: [{
+        label: 'RMSE',
+        data: [13.83, 6.28, 10.86, 21.69],
+        backgroundColor: [ACCENT, GREEN, YELLOW, RED],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#1d2129' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  /* ==========================================================
+     SHAP GLOBAL CHART
+     ========================================================== */
+  new Chart(document.getElementById('chartSHAPGlobal'), {
+    type: 'bar',
+    data: {
+      labels: ['PM₂.₅', 'PM₁₀', 'NO₂', 'O₃', 'CO', 'SO₂'],
+      datasets: [{
+        label: 'Mean |φ|',
+        data: [0.0033, 0.0025, 0.0005, 0.0004, 0.0004, 0.0002],
+        backgroundColor: [ACCENT, '#3fbfb3', PURPLE, BLUE, ORANGE, YELLOW],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#1d2129' }, beginAtZero: true },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+
+  /* ==========================================================
+     SHAP SEASONAL CHART
+     ========================================================== */
+  new Chart(document.getElementById('chartSHAPSeasonal'), {
+    type: 'bar',
+    data: {
+      labels: ['Winter', 'Summer', 'Monsoon'],
+      datasets: [
+        { label: 'PM₂.₅', data: [0.0034, 0.0032, 0.0023], backgroundColor: ACCENT, borderRadius: 4 },
+        { label: 'PM₁₀',  data: [0.0018, 0.0033, 0.0040], backgroundColor: ORANGE, borderRadius: 4 },
+        { label: 'NO₂',   data: [0.0006, 0.0005, 0.0013], backgroundColor: PURPLE, borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, boxHeight: 12 } }
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#1d2129' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  /* ==========================================================
+     SHAP DIURNAL CHART
+     ========================================================== */
+  const hours = Array.from({length: 24}, (_, i) => i + ':00');
+
+  // Stylised diurnal curves matching the paper's narrative
+  // (peaks: PM at 08:00, NO2/O3 at 11-13, SO2 at 17)
+  const pm25 = [0.0018,0.0017,0.0017,0.0019,0.0024,0.0034,0.0040,0.0042,0.0044,0.0038,0.0032,0.0028,0.0026,0.0026,0.0027,0.0029,0.0031,0.0033,0.0030,0.0026,0.0023,0.0021,0.0020,0.0019];
+  const pm10 = [0.0012,0.0011,0.0011,0.0013,0.0017,0.0024,0.0029,0.0031,0.0032,0.0028,0.0023,0.0020,0.0018,0.0018,0.0019,0.0021,0.0022,0.0023,0.0021,0.0018,0.0016,0.0015,0.0014,0.0013];
+  const no2  = [0.0003,0.0003,0.0003,0.0003,0.0004,0.0005,0.0006,0.0007,0.0008,0.0009,0.0010,0.0011,0.0011,0.0010,0.0009,0.0008,0.0007,0.0006,0.0005,0.0004,0.0004,0.0003,0.0003,0.0003];
+  const o3   = [0.0002,0.0002,0.0002,0.0002,0.0003,0.0004,0.0005,0.0006,0.0007,0.0008,0.0009,0.0010,0.0010,0.0009,0.0008,0.0007,0.0006,0.0005,0.0004,0.0003,0.0003,0.0003,0.0002,0.0002];
+  const co   = [0.0003,0.0003,0.0003,0.0003,0.0004,0.0005,0.0006,0.0007,0.0008,0.0008,0.0007,0.0006,0.0005,0.0005,0.0005,0.0005,0.0005,0.0005,0.0004,0.0004,0.0004,0.0003,0.0003,0.0003];
+  const so2  = [0.0001,0.0001,0.0001,0.0001,0.0001,0.0002,0.0002,0.0002,0.0002,0.0002,0.0002,0.0002,0.0002,0.0002,0.0003,0.0003,0.0003,0.0003,0.0002,0.0002,0.0002,0.0001,0.0001,0.0001];
+
+  new Chart(document.getElementById('chartSHAPDiurnal'), {
+    type: 'line',
+    data: {
+      labels: hours,
+      datasets: [
+        { label: 'PM₂.₅', data: pm25, borderColor: ACCENT, backgroundColor: 'transparent', tension: 0.35, borderWidth: 2.5, pointRadius: 0 },
+        { label: 'PM₁₀',  data: pm10, borderColor: ORANGE, backgroundColor: 'transparent', tension: 0.35, borderWidth: 2.5, pointRadius: 0 },
+        { label: 'NO₂',   data: no2,  borderColor: PURPLE, backgroundColor: 'transparent', tension: 0.35, borderWidth: 2, pointRadius: 0 },
+        { label: 'O₃',    data: o3,   borderColor: BLUE,   backgroundColor: 'transparent', tension: 0.35, borderWidth: 2, pointRadius: 0 },
+        { label: 'CO',    data: co,   borderColor: YELLOW, backgroundColor: 'transparent', tension: 0.35, borderWidth: 2, pointRadius: 0 },
+        { label: 'SO₂',   data: so2,  borderColor: RED,    backgroundColor: 'transparent', tension: 0.35, borderWidth: 2, pointRadius: 0 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, boxHeight: 12 } }
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#1d2129' }, title: { display: true, text: 'Mean |φ|', color: '#8b919c' } },
+        x: { grid: { display: false }, title: { display: true, text: 'Hour of day (IST)', color: '#8b919c' } }
+      }
+    }
+  });
+
+  /* ==========================================================
+     ABLATION CHART
+     ========================================================== */
+  new Chart(document.getElementById('chartAblation'), {
+    type: 'bar',
+    data: {
+      labels: ['w/o Bidirection', 'w/o BatchNorm', 'w/o CNN'],
+      datasets: [{
+        label: 'ΔRMSE vs full model',
+        data: [0.17, 2.39, 4.18],
+        backgroundColor: [YELLOW, ORANGE, RED],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#1d2129' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  /* ==========================================================
+     COPY BIBTEX
+     ========================================================== */
+  document.getElementById('copyBtn').addEventListener('click', async function() {
+    const text = document.getElementById('citationText').textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.textContent = 'Copied ✓';
+      this.classList.add('copied');
+      setTimeout(() => {
+        this.textContent = 'Copy';
+        this.classList.remove('copied');
+      }, 1800);
+    } catch (e) {
+      this.textContent = 'Press Ctrl+C';
+    }
+  });
+
+  /* ==========================================================
+     COLAB LINK PLACEHOLDER
+     ========================================================== */
+  document.getElementById('openColab').addEventListener('click', function(e) {
+    e.preventDefault();
+    const url = 'https://github.com/akashnathai/hybrid_aqi_xai/blob/main/notebooks/hybrid_aqi_xai.ipynb';
+    // When notebook is uploaded, this opens directly in Colab via GitHub integration
+    window.open('https://colab.research.google.com/github/akashnathai/hybrid_aqi_xai/blob/main/notebooks/hybrid_aqi_xai.ipynb', '_blank');
+  });
+
+  /* ==========================================================
+     SCROLL REVEAL
+     ========================================================== */
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>
