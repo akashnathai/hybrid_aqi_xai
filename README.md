@@ -225,11 +225,12 @@ If you use this code or build on this work, please cite:
 | Author | Affiliation |
 |---|---|
 | **Akash Nath** | Dept. of Computer Science & Engineering, Assam University, Silchar, India · `akashnath.aus@gmail.com` |
+| **Kamalesh Debnath** | Department of Management Studies, National Institute of Technology, Silchar, India |
 | **Pragyat Jyoti Baruah** | Dept. of Computer Science & Engineering, Assam University, Silchar, India |
 | **Arnab Paul** | Dept. of Computer Science & Engineering, Assam University, Silchar, India|
 | **Arun Jyoti Nath** | Dept. of Ecology and Environmental Science, Assam University, Silchar, India |
 | **Tirthanka Borah** | Dept. of Computer Science & Engineering, Assam University, Silchar, India |
-| **Kamalesh Debnath** | Department of Management Studies, National Institute of Technology, Silchar, India |
+
 
 
 ## 📜 License
